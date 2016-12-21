@@ -49,12 +49,10 @@ Helper.prototype.pairTokenWithRegid = function(input , output , callback){
                 pairedWithTopics[obj.tags[i]] = [];
             }
             pairedWithTopics[obj.tags[i]].push(obj.registration_token);
-            registration_id.push(obj.registration_token);
         }
+        registration_id.push(obj);
     })
-
     callback(pairedWithTopics , registration_id);
-
 }
 
 Helper.prototype.findElementParams = function(in_csv, out_csv , element , input_position){

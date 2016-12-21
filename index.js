@@ -1,4 +1,5 @@
-var http = require("http");
+var https = require("https");
+var request = require('request');
 var Helper = require("./helper.js");
 var Promise = require("promise");
 
@@ -7,13 +8,13 @@ var helper = new Helper();
 var json1, json2;
 
 var inCsv = new Promise((resolve , reject) => {
-    helper.readCsvFile("./csv/com.economist.ipad.ap.csv" , function(csvContent){  
+    helper.readCsvFile("./csv/com.economist.ipad.in.csv" , function(csvContent){  
         resolve(csvContent);
     })
 });
 
 var outCsv =  new Promise((resolve , reject) => {
-    helper.readCsvFile("./csv/com.economist.ipad.ap_out.csv" , function(csvContent){
+    helper.readCsvFile("./csv/com.economist.ipad.in_out.csv" , function(csvContent){
         resolve(csvContent);
     })
 })
@@ -30,17 +31,18 @@ Promise.all([inCsv, outCsv]).then(values => {
 
 function unsubscribeFromTopic(regID){
 
+    console.log("unsubscribeTopic");
+
     var result = regID.map(function(obj){
+
         var options = {
-            host: "https://iid.googleapis.com",
-            path: "/iid/info/" + obj,
+            host: "iid.googleapis.com",
+            path: "/iid/info/" + obj.registration_token + "?details=true",
             method: 'GET',
             headers: {Authorization : "key=AIzaSyA18DOy5YTyPoUFK8x6hASacSL3xH68upc"}
         }
 
-        console.log(options);
-
-        /*callback = function(response) {
+        callback = function(response) {
 
             var str = '';
 
@@ -48,38 +50,62 @@ function unsubscribeFromTopic(regID){
                 str += chunk;
             });
 
-
             response.on('end' , function (){
-                console.log(str);
+                    str = JSON.parse(str);
+                    if(typeof str["rel"] != "undefined"){
+                        var keys = Object.keys(str["rel"]["topics"]);
+                        var newTopics = getOldTopics(keys);
+                        console.log(newTopics);
+                    }
+                    //var key = Object.keys(str["rel"]["topics"]);
+                    //var len = key.length;
+                    /*for(var i = 0; i < len; i++){
+                        //unsubscribe(regID , keys[i]);
+                    }*/
             });
-
         }
+        https.request(options , callback).end();
+    })
+}
 
-        http.request(options , callback).end();*/
+//unsubscribe("cYqZxvRGgEY:APA91bGl_bgg11gbxVKV9-66wx4uEk_OSbOCBru3fKMMHHL8C_eTymLhbdWXT-jUQv2Q8PR0oC1NeUGyL0xbL4FCyK7iaZODnzxrJGt6FG42MIxD3vfuy3Ebg_3oz8XcLKZayyBAp4KX" , "content-region-eu");
+
+function unsubscribe(regID , topic){
+    var options = {
+        to: "/topics/" + topic,
+        registration_tokens: [regID]
+    }
+
+    request({
+        url: "https://iid.googleapis.com/iid/v1:batchRemove",
+        method: "POST",
+        headers: {
+            "content-type": "application/json",
+            "Authorization" : "key=AIzaSyA18DOy5YTyPoUFK8x6hASacSL3xH68upc"
+        },
+        json: true,
+        body: options
+    }, function (error, response, body){
+        console.log(response);
+    });
+}
+
+function getOldTopics(topics){
+
+    var topicsMap = {
+        Platform_iOS : "Platform_iOS",
+        Device_Type_iPad : "DeviceType_iPad",
+        Paid_User : "UserType_Paid",
+        Free_User : "UserType_Free",
+        LoggedIn_Yes : "LoggedIn"
+
+    }
+
+    return topics.map(function(obj) {
+        if(typeof topicsMap[obj] !== "undefined"){
+            return topicsMap[obj];
+        }
+        return obj;  
     })
 
-    
-
 }
-
-/*var options = {
-    host: "qa.espresso.economist.com",
-    path: "/api/v1/issue/AP/json"
-}
-
-callback = function(response) {
-
-    var str = '';
-
-    response.on('data' , function (chunk){
-        str += chunk;
-    });
-
-
-    response.on('end' , function (){
-        console.log(str);
-    });
-
-}
-
-http.request(options , callback).end();*/

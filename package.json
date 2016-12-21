@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "csvtojson": "^1.0.3",
-    "promise": "^7.1.1"
+    "promise": "^7.1.1",
+    "request": "^2.79.0"
   }
 }
