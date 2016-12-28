@@ -19,22 +19,26 @@ var outCsv =  new Promise((resolve , reject) => {
     })
 })
 
-Promise.all([inCsv, outCsv]).then(values => { 
+/*Promise.all([inCsv, outCsv]).then(values => { 
     json1 = values[0];
     json2 = values[1];
     console.log("input and output files read");
     helper.pairTokenWithRegid(json1 , json2 , function(result , regID){
         console.log("paired");
-        unsubscribeFromTopic(regID);
+        unsubscribeFromTopic(regID , function(result){
+            console.log(result);
+        });
   })
-});
+});*/
 
-function unsubscribeFromTopic(regID){
+function unsubscribeFromTopic(regID , func){
 
     console.log("unsubscribeTopic");
 
     var result = regID.map(function(obj){
 
+        return new Promise((resolve) => {
+      
         var options = {
             host: "iid.googleapis.com",
             path: "/iid/info/" + obj.registration_token + "?details=true",
@@ -51,6 +55,7 @@ function unsubscribeFromTopic(regID){
             });
 
             response.on('end' , function (){
+                //console.log(str);
                     str = JSON.parse(str);
                     if(typeof str["rel"] != "undefined"){
                         var keys = Object.keys(str["rel"]["topics"]);
@@ -58,11 +63,23 @@ function unsubscribeFromTopic(regID){
                         str["rel"]["topics"] = oldTopics;
                         keys = str["rel"]["topics"];
                         var len = keys.length;
-                        //console.log(str["rel"]["topics"]);
+                        //console.log(keys[0]);
                         for(var i = 0; i < len; i++){
                             //console.log(obj.registration_token + ' - ' + keys[i]);
-                            unsubscribe(obj.registration_token , keys[i]);
+                            //unsubscribe(obj.registration_token , keys[i]);
                         }
+                        /*console.log({ 
+                            registration_token : obj.registration_token,
+                            topics : keys
+                            });*/
+                            resolve({ 
+                            registration_token : obj.registration_token,
+                            topics : keys
+                            });
+                        /*return { 
+                            registration_token : obj.registration_token,
+                            topics : keys
+                            }*/
                     }
                     //console.log();
                     //var newTopics = Object.keys(str["rel"]["topics"]);
@@ -75,12 +92,40 @@ function unsubscribeFromTopic(regID){
             });
         }
         https.request(options , callback).end();
-    })
+
+        });
+    });
+
+    Promise.all(result).then(() => func(result));
+
 }
 
-//unsubscribe("cYqZxvRGgEY:APA91bGl_bgg11gbxVKV9-66wx4uEk_OSbOCBru3fKMMHHL8C_eTymLhbdWXT-jUQv2Q8PR0oC1NeUGyL0xbL4FCyK7iaZODnzxrJGt6FG42MIxD3vfuy3Ebg_3oz8XcLKZayyBAp4KX" , "content-region-eu");
-
 function unsubscribe(regID , topic){
+
+    var options = {
+        uri: 'https://iid.googleapis.com/iid/v1:batchRemove',
+        method: 'POST',
+        headers: {
+            'Authorization' : "key=AIzaSyA18DOy5YTyPoUFK8x6hASacSL3xH68upc",
+    
+        },
+        json: {
+            "to": "/topics/" + topic,
+            "registration_tokens": [regID]
+        }
+    };
+
+    console.log(regID , topic);
+
+    request(options, function (error, response, body) {
+
+        console.log(error);
+        if (!error && response.statusCode == 200) {
+            console.log(body) // Print the shortened url.
+        }
+    });
+
+    /*
 
     var content = {
         to: "/topics/" + topic,
@@ -116,7 +161,7 @@ function unsubscribe(regID , topic){
         });
 
         response.on('end' , function (){
-            
+            req.end();
         });
 
         response.on('error' , function (error){
@@ -126,8 +171,8 @@ function unsubscribe(regID , topic){
 
     console.log('after callback')
 
-    req.write(content);
-    req.end();
+    req.write(content);*/
+    //req.end();
 }
 
 function getOldTopics(topics){
