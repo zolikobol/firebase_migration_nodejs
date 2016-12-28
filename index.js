@@ -54,12 +54,22 @@ function unsubscribeFromTopic(regID){
                     str = JSON.parse(str);
                     if(typeof str["rel"] != "undefined"){
                         var keys = Object.keys(str["rel"]["topics"]);
-                        var newTopics = getOldTopics(keys);
-                        console.log(newTopics);
+                        var oldTopics = getOldTopics(keys);
+                        str["rel"]["topics"] = oldTopics;
+                        keys = str["rel"]["topics"];
+                        var len = keys.length;
+                        //console.log(str["rel"]["topics"]);
+                        for(var i = 0; i < len; i++){
+                            //console.log(obj.registration_token + ' - ' + keys[i]);
+                            unsubscribe(obj.registration_token , keys[i]);
+                        }
                     }
-                    //var key = Object.keys(str["rel"]["topics"]);
-                    //var len = key.length;
-                    /*for(var i = 0; i < len; i++){
+                    //console.log();
+                    //var newTopics = Object.keys(str["rel"]["topics"]);
+                    //console.log(key);
+                    /*var len = key.length;
+                    for(var i = 0; i < len; i++){
+                        console.log(regID + ' - ' + keys[i]);
                         //unsubscribe(regID , keys[i]);
                     }*/
             });
@@ -71,41 +81,70 @@ function unsubscribeFromTopic(regID){
 //unsubscribe("cYqZxvRGgEY:APA91bGl_bgg11gbxVKV9-66wx4uEk_OSbOCBru3fKMMHHL8C_eTymLhbdWXT-jUQv2Q8PR0oC1NeUGyL0xbL4FCyK7iaZODnzxrJGt6FG42MIxD3vfuy3Ebg_3oz8XcLKZayyBAp4KX" , "content-region-eu");
 
 function unsubscribe(regID , topic){
-    var options = {
+
+    var content = {
         to: "/topics/" + topic,
         registration_tokens: [regID]
     }
 
-    request({
-        url: "https://iid.googleapis.com/iid/v1:batchRemove",
-        method: "POST",
+    content = JSON.stringify(content);
+
+    //console.log(content);
+
+    var options = {
+        host: "iid.googleapis.com",
+        path: "/iid/v1:batchRemove",
+        method: 'POST',
         headers: {
-            "content-type": "application/json",
-            "Authorization" : "key=AIzaSyA18DOy5YTyPoUFK8x6hASacSL3xH68upc"
-        },
-        json: true,
-        body: options
-    }, function (error, response, body){
-        console.log(response);
+            'Authorization' : "key=AIzaSyA18DOy5YTyPoUFK8x6hASacSL3xH68upc",
+            'Content-Type' : "application/json",
+            'Content-Length': content.length
+    
+        }
+    }
+
+    console.log('before callback')
+    var req = https.request(options , function(response) {
+
+        console.log('in callback');
+
+        var str = '';
+
+        response.on('data' , function (chunk){
+            str += chunk;
+            console.log(str);
+        });
+
+        response.on('end' , function (){
+            
+        });
+
+        response.on('error' , function (error){
+            console.log("error");
+        });
     });
+
+    console.log('after callback')
+
+    req.write(content);
+    req.end();
 }
 
 function getOldTopics(topics){
 
     var topicsMap = {
         Platform_iOS : "Platform_iOS",
-        Device_Type_iPad : "DeviceType_iPad",
-        Paid_User : "UserType_Paid",
-        Free_User : "UserType_Free",
-        LoggedIn_Yes : "LoggedIn"
+        Device_Type_iPad : "Device_Type_iPad",
+        Paid_User : "Paid_User",
+        Free_User : "Free_User",
+        LoggedIn_Yes : "LoggedIn_Yes",
+        LoggedIn_No : "LoggedIn_No"
 
     }
 
-    return topics.map(function(obj) {
-        if(typeof topicsMap[obj] !== "undefined"){
+    return topics.filter(function(obj) {
+        if(typeof topicsMap[obj] !== 'undefined'){
             return topicsMap[obj];
         }
-        return obj;  
     })
-
 }
