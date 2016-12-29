@@ -2,6 +2,8 @@ var https = require("https");
 var request = require('request');
 var Helper = require("./helper.js");
 var Promise = require("promise");
+var asynch = require("asynch");
+var rp = require('request-promise');
 
 var helper = new Helper();
 
@@ -19,88 +21,72 @@ var outCsv =  new Promise((resolve , reject) => {
     })
 })
 
-/*Promise.all([inCsv, outCsv]).then(values => { 
+Promise.all([inCsv, outCsv]).then(values => { 
     json1 = values[0];
     json2 = values[1];
     console.log("input and output files read");
     helper.pairTokenWithRegid(json1 , json2 , function(result , regID){
         console.log("paired");
-        unsubscribeFromTopic(regID , function(result){
-            console.log(result);
+        var unsubscribed = unsubscribeFromTopic(regID);
+        unsubscribed.then(function(result){
+            console.log("aa");
+        }).catch(function(err){
+            console.log("error");
         });
   })
-});*/
+});
 
-function unsubscribeFromTopic(regID , func){
+function unsubscribeFromTopic(regID){
 
     console.log("unsubscribeTopic");
 
-    var result = regID.map(function(obj){
+    var devicesCount = 0;
 
-        return new Promise((resolve) => {
-      
+    var result = new Array();
+
+    Promise.all(regID.map(function(item){
+    
         var options = {
-            host: "iid.googleapis.com",
-            path: "/iid/info/" + obj.registration_token + "?details=true",
+            uri: "https://iid.googleapis.com//iid/info/" + item.registration_token + "?details=true",
             method: 'GET',
             headers: {Authorization : "key=AIzaSyA18DOy5YTyPoUFK8x6hASacSL3xH68upc"}
         }
 
-        callback = function(response) {
-
-            var str = '';
-
-            response.on('data' , function (chunk){
-                str += chunk;
-            });
-
-            response.on('end' , function (){
-                //console.log(str);
-                    str = JSON.parse(str);
-                    if(typeof str["rel"] != "undefined"){
-                        var keys = Object.keys(str["rel"]["topics"]);
+        rp(options)
+            .then(function(res){
+                if(res.indexOf("<HTML>") === -1){
+                    res = JSON.parse(res);
+                    if(typeof res["rel"] != "undefined"){
+                        var keys = Object.keys(res["rel"]["topics"]);
                         var oldTopics = getOldTopics(keys);
-                        str["rel"]["topics"] = oldTopics;
-                        keys = str["rel"]["topics"];
+                        res["rel"]["topics"] = oldTopics;
+                        keys = res["rel"]["topics"];
                         var len = keys.length;
-                        //console.log(keys[0]);
-                        for(var i = 0; i < len; i++){
-                            //console.log(obj.registration_token + ' - ' + keys[i]);
-                            //unsubscribe(obj.registration_token , keys[i]);
-                        }
-                        /*console.log({ 
-                            registration_token : obj.registration_token,
-                            topics : keys
-                            });*/
-                            resolve({ 
-                            registration_token : obj.registration_token,
-                            topics : keys
-                            });
-                        /*return { 
-                            registration_token : obj.registration_token,
-                            topics : keys
-                            }*/
+                        result.push({
+                            reg_token: item.registration_token,
+                            tags: keys
+                        })
+                        //console.log(item.registration_token , keys)
+                        /*for(var i = 0; i< len; i++){
+                            unsubscribe(item.registration_token , keys[i]);
+                        }*/
                     }
-                    //console.log();
-                    //var newTopics = Object.keys(str["rel"]["topics"]);
-                    //console.log(key);
-                    /*var len = key.length;
-                    for(var i = 0; i < len; i++){
-                        console.log(regID + ' - ' + keys[i]);
-                        //unsubscribe(regID , keys[i]);
-                    }*/
-            });
-        }
-        https.request(options , callback).end();
+                }
 
-        });
+            })
+            .catch(function(err){
+                //console.log(err);
+            })
+    })).then(function(res){
+        console.log(result);
     });
-
-    Promise.all(result).then(() => func(result));
-
 }
 
+//unsubscribe('drRkOuztyGY:APA91bE6iwtHMBQ74CnxIg0Ik1-R35YRmTxYX1Nx-WUt7ITS5Drbu7tTbH7xdfOwTnIJW2tir4y59Lng0yCS7jhlpk6JqzlrutowtlVozfq69VsXahW-HNTlBUJ8hzI1N_vjwuAy5TSd' , 'Device_Type_iPad');
+
 function unsubscribe(regID , topic){
+
+    console.log(regID , topic);
 
     var options = {
         uri: 'https://iid.googleapis.com/iid/v1:batchRemove',
@@ -109,70 +95,19 @@ function unsubscribe(regID , topic){
             'Authorization' : "key=AIzaSyA18DOy5YTyPoUFK8x6hASacSL3xH68upc",
     
         },
-        json: {
+        body: {
             "to": "/topics/" + topic,
             "registration_tokens": [regID]
-        }
+        },
+        json: true,
     };
 
-    console.log(regID , topic);
-
-    request(options, function (error, response, body) {
-
-        console.log(error);
-        if (!error && response.statusCode == 200) {
-            console.log(body) // Print the shortened url.
-        }
-    });
-
-    /*
-
-    var content = {
-        to: "/topics/" + topic,
-        registration_tokens: [regID]
-    }
-
-    content = JSON.stringify(content);
-
-    //console.log(content);
-
-    var options = {
-        host: "iid.googleapis.com",
-        path: "/iid/v1:batchRemove",
-        method: 'POST',
-        headers: {
-            'Authorization' : "key=AIzaSyA18DOy5YTyPoUFK8x6hASacSL3xH68upc",
-            'Content-Type' : "application/json",
-            'Content-Length': content.length
-    
-        }
-    }
-
-    console.log('before callback')
-    var req = https.request(options , function(response) {
-
-        console.log('in callback');
-
-        var str = '';
-
-        response.on('data' , function (chunk){
-            str += chunk;
-            console.log(str);
-        });
-
-        response.on('end' , function (){
-            req.end();
-        });
-
-        response.on('error' , function (error){
-            console.log("error");
-        });
-    });
-
-    console.log('after callback')
-
-    req.write(content);*/
-    //req.end();
+    rp(options)
+        .then(function(res){
+            console.log(res)
+        }).catch(function(err){
+            //console.log(err)
+        })
 }
 
 function getOldTopics(topics){

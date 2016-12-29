@@ -10,8 +10,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "asynch": "^0.5.2",
     "csvtojson": "^1.0.3",
     "promise": "^7.1.1",
-    "request": "^2.79.0"
+    "request": "^2.79.0",
+    "request-promise": "^4.1.1"
   }
 }
