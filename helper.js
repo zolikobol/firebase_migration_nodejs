@@ -1,6 +1,7 @@
 var Converter = require("csvtojson").Converter
     fs = require("fs");
 var Promise = require("promise");
+//var csvWriter = require('csv-write-stream')
 
 var pairedWithTopics = Array();
 var registration_id = Array();
@@ -10,12 +11,15 @@ function Helper() {
 }
 
 Helper.prototype.readCsvFile = function(pathToCsv , callback) {
+    
+    console.log("reading file " + pathToCsv);
 
     var converter = new Converter({
         delimiter: ",",
     });
 
     converter.on("end_parsed" , function(jsonArray){
+        console.log("reading of " + pathToCsv + " finished");
         callback( jsonArray );
     })
 
@@ -27,13 +31,13 @@ Helper.prototype.readCsvFile = function(pathToCsv , callback) {
 Helper.prototype.pairTokenWithRegid = function(input , output , callback){
 
     console.log("pairing device tokens with registration ID");
-    console.log("getting tags for registration ID");
 
     var elements = findElements(input , output);
     elements.then(data => {
         var pairedElements = pairDevices(data);
         pairedElements.then(newData => {
             //console.log(newData["registration_id"]);
+            console.log("pairing devices finished");
             callback(newData["paired"] , newData["registration_id"]);
         })
         
@@ -68,14 +72,14 @@ function pairDevices(paired){
 
 function findElements(input , output){
     return new Promise(function(resolve , reject){
-        //console.log(input);
+        console.log("matching apns token with registration ID");
         var len = input.length;
         var paired = [];
         for(var i = 0; i< len; i++){
             element = input[i]["Registration Id"];
             found = findElementParams(input , output, element , i);
             if(found != null){
-                //console.log(i + " device paired");
+                console.log(i + " device paired");
                 paired.push(found);
             } else {
                 reject("not paired");
@@ -86,6 +90,8 @@ function findElements(input , output){
 }
 
 function findElementParams(in_csv, out_csv , element , input_position){
+
+    console.log("finding element " + element);
 
     var len = out_csv.length;
     var found = {};
